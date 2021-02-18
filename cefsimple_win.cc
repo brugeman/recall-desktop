@@ -2,11 +2,16 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
+#include <cstdlib>
+#include <string>
+
 #include <windows.h>
+#include <shellapi.h>
+#include <direct.h>
 
 #include "include/cef_command_line.h"
 #include "include/cef_sandbox_win.h"
-#include "tests/cefsimple/simple_app.h"
+#include "simple_app.h"
 
 // When generating projects with CMake the CEF_USE_SANDBOX value will be defined
 // automatically if using the required compiler version. Pass -DUSE_SANDBOX=OFF
@@ -20,6 +25,40 @@
 #pragma comment(lib, "cef_sandbox.lib")
 #endif
 
+static std::string get_dir(const char* av0) {
+  char buf[4096] = {};
+  const char* cwd = _getcwd(buf, sizeof(buf));
+  std::string prog(av0);
+  const size_t sp = prog.find_last_of('\\');
+  if (sp != std::string::npos)
+    prog = prog.substr(0, sp);  // cut program file name
+  else
+    prog.clear();  // no /, no program path
+
+  if (prog.size() >= 2 && prog.substr(0, 2) == "./")
+    prog = prog.substr(2);
+  if (prog.size() >= 1 && prog.substr(0, 1) == ".")
+    prog = prog.substr(1);
+
+  std::string dir = cwd;
+
+  if (!prog.empty()) {
+    if (prog[0] == '\\' || (prog.size () > 1 && prog[1] == ':'))
+      dir = prog;
+    else
+      dir += "\\" + prog;
+  }
+
+  if (dir.substr(dir.size() - 4) == "\\bin")
+    dir.resize(dir.size() - 4);
+  else if (dir.substr(dir.size() - 6) == "\\Debug")
+    dir.resize(dir.size() - 6);
+
+  printf("cwd '%s' prog '%s' dir '%s'\n", cwd, av0, dir.c_str());
+
+  return dir;
+}
+
 // Entry point function for all processes.
 int APIENTRY wWinMain(HINSTANCE hInstance,
                       HINSTANCE hPrevInstance,
@@ -27,6 +66,20 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
                       int nCmdShow) {
   UNREFERENCED_PARAMETER(hPrevInstance);
   UNREFERENCED_PARAMETER(lpCmdLine);
+
+  int argc = 0;
+  auto* argvw = ::CommandLineToArgvW(GetCommandLineW(), &argc);
+  if (!argc)
+    return 1;
+
+  std::wstring w(argvw[0]);
+  char buffer[4096] = {};
+  const auto r = std::wcstombs(buffer, w.c_str(), sizeof(buffer));
+  if (r >= sizeof(buffer))
+    buffer[sizeof(buffer) - 1] = 0;
+
+  const auto dir = get_dir(buffer);
+  //const auto dir = get_dir("C:\\Users\\bruge\\Desktop\\cef-project\\build\\recall\\bin\\recall.exe");
 
   // Enable High-DPI support on Windows 7 or newer.
   CefEnableHighDPISupport();
@@ -52,37 +105,13 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
     return exit_code;
   }
 
-  std::string dir;
-  {
-     char buf[4096] = {};
-     const char * cwd = getcwd (buf, sizeof (buf));
-     std::string prog (lpCmdLine);
-     const size_t sp = prog.find_last_of ('\\');
-     if (sp != std::string::npos)
-  	prog = prog.substr (0, sp); // cut program file name
-     else
-  	prog.clear (); // no /, no program path
-	
-     dir = cwd;
-     if (prog[0] == '/')
-  	dir = prog;
-     else
-  	dir += "/" + prog;
-
-     if (dir.substr (dir.size () - 4) == "\bin")
-  	dir.resize (dir.size () - 4);
-
-     printf ("cwd '%s' prog '%s' dir '%s'\n",
-  	     cwd, argv[0], dir.c_str ());
-  }
-  
   // Parse command-line arguments for use in this method.
   CefRefPtr<CefCommandLine> command_line = CefCommandLine::CreateCommandLine();
   command_line->InitFromString(::GetCommandLineW());
 
   // Specify CEF global settings here.
   CefSettings settings;
-
+  
   if (command_line->HasSwitch("enable-chrome-runtime")) {
     // Enable experimental Chrome runtime. See issue #2969 for details.
     settings.chrome_runtime = true;
@@ -92,10 +121,10 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   settings.no_sandbox = true;
 #endif
 
-  auto * sapp = new SimpleApp;
-  if (!sapp->Init (dir.c_str (), 0, 0)) // FIXME get width and height
-     return 1;
-  
+  auto* sapp = new SimpleApp;
+  if (!sapp->Init(dir.c_str(), 1920, 1080))  // FIXME get width and height
+    return 1;
+
   // SimpleApp implements application-level callbacks for the browser process.
   // It will create the first browser instance in OnContextInitialized() after
   // CEF has initialized.

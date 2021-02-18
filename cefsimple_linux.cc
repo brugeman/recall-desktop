@@ -130,6 +130,38 @@ get_dir (const char * av0)
    return dir;
 }
 
+// static std::string
+// get_dir (const char * av0)
+// {
+//    char buf[4096] = {};
+//    const char * cwd = getcwd (buf, sizeof (buf));
+//    std::string prog (av0);
+//    const size_t sp = prog.find_last_of ('/');
+//    if (sp != std::string::npos)
+//       prog = prog.substr (0, sp); // cut program file name
+//    else
+//       prog.clear (); // no /, no program path
+
+//    if (prog.size () >= 2 && prog.substr (0, 2) == "./")
+//       prog = prog.substr (2);     
+//    if (prog.size () >= 1 && prog.substr (0, 1) == ".")
+//       prog = prog.substr (1);     
+	
+//    std::string dir = cwd;
+//    if (dir.substr (dir.size () - 4) == "/bin")
+//       dir.resize (dir.size () - 4);
+     
+//    if (prog[0] == '/')
+//       dir = prog;
+//    else
+//       dir += "/" + prog;
+
+//    printf ("cwd '%s' prog '%s' dir '%s'\n",
+// 	   cwd, av0, dir.c_str ());
+
+//    return dir;
+// }
+
 // Entry point function for all processes.
 int main(int argc, char* argv[]) {
 

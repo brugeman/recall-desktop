@@ -4,9 +4,9 @@
 
 #include "simple_app.h"
 
-#include <string>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <string>
 
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
@@ -17,7 +17,7 @@
 
 namespace {
 
-static const int WIDTH = 1024;
+static const int WIDTH = 1280;
 static const int HEIGHT = 768;
 
 // When using the Views framework this object provides the delegate
@@ -84,69 +84,68 @@ class SimpleBrowserViewDelegate : public CefBrowserViewDelegate {
 
 SimpleApp::SimpleApp() {}
 
-bool SimpleApp::Init(const char * app_dir, const size_t width, const size_t height) {
+bool SimpleApp::Init(const char* app_dir,
+                     const size_t width,
+                     const size_t height) {
+  dir_ = app_dir;
+  width_ = width;
+  height_ = height;
 
-   dir_ = app_dir;
-   width_ = width;
-   height_ = height;
-
-   // read port + token
-   {
-#ifdef OS_WIN     
-      const auto file = std::string (app_dir) + "\tmp\ep";
-#else     
-      const auto file = std::string (app_dir) + "/tmp/ep";
-#endif     
-      std::string line;
-      std::ifstream s (file);
-      if (s.is_open ())
-      {
-	 if (std::getline (s, line))
-	 {
-	    port_ = atoi (line.c_str ());
-	    const auto ti = line.find (' ');
-	    if (ti != std::string::npos)
-	       token_ = line.substr (ti + 1);
-	 }
-	 s.close();
+  // read port + token
+  {
+#ifdef OS_WIN
+    const auto file = std::string(app_dir) + "\\tmp\\ep";
+#else
+    const auto file = std::string(app_dir) + "/tmp/ep";
+#endif
+    std::string line;
+    std::ifstream s(file);
+    if (s.is_open()) {
+      if (std::getline(s, line)) {
+        port_ = atoi(line.c_str());
+        const auto ti = line.find(' ');
+        if (ti != std::string::npos)
+          token_ = line.substr(ti + 1);
       }
-   }
- 
-//   printf ("port %lu token '%s'\n", port_, token_.c_str ());
-   if (!port_ || token_.empty ())
-   {
-      fprintf (stderr, "Failed to get local server endpoint");
-      return false;
-   }
+      s.close();
+    }
+  }
 
-   const std::string json = "window.recall_platform = {"
+  //   printf ("port %lu token '%s'\n", port_, token_.c_str ());
+  if (!port_ || token_.empty()) {
+    fprintf(stderr, "Failed to get local server endpoint");
+    return false;
+  }
+
+  const std::string json =
+      "window.recall_platform = {"
       "type: \"desktop\","
-      "port: " + std::to_string (port_) + ","
-      "token: \"" + token_ + "\","
+      "port: " +
+      std::to_string(port_) +
+      ","
+      "token: \"" +
+      token_ +
+      "\","
       "files_home_path: \"\","
-      "};"
-      ;
+      "};";
 
-   {
-#ifdef OS_WIN     
-      const auto file = std::string (app_dir) + "\assets\html\js\platform.js";
-#else     
-      const auto file = std::string (app_dir) + "/assets/html/js/platform.js";
-#endif     
-      std::ofstream o (file);
-      if (o.is_open())
-      {
-	 o << json;
-	 o.close ();
-      }
-      else
-      {
-	 fprintf (stderr, "Failed to write local server endpoint");
-	 return false;
-      }
-   }
-  
-   return true;
+  {
+#ifdef OS_WIN
+    const auto file = std::string(app_dir) + "\\assets\\html\\js\\platform.js";
+#else
+    const auto file = std::string(app_dir) + "/assets/html/js/platform.js";
+#endif
+    std::ofstream o(file);
+    if (o.is_open()) {
+      o << json;
+      o.close();
+    } else {
+      fprintf(stderr, "Failed to write local server endpoint");
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void SimpleApp::OnContextInitialized() {
@@ -158,11 +157,13 @@ void SimpleApp::OnContextInitialized() {
   const bool enable_chrome_runtime =
       command_line->HasSwitch("enable-chrome-runtime");
 
-#if defined(OS_WIN) || defined(OS_LINUX)
+#if defined(OS_WIN)
   // Create the browser using the Views framework if "--use-views" is specified
   // via the command-line. Otherwise, create the browser using the native
   // platform framework. The Views framework is currently only supported on
   // Windows and Linux.
+  const bool use_views = true;  // command_line->HasSwitch("use-views");
+#elif defined(OS_LINUX)
   const bool use_views = command_line->HasSwitch("use-views");
 #else
   const bool use_views = false;
@@ -175,8 +176,9 @@ void SimpleApp::OnContextInitialized() {
   CefBrowserSettings browser_settings;
 
   std::string url = "file://" + dir_ + "/assets/html/index.html";
-  for (auto & c: url)
-     if (c == '\\') c = '/'; 
+  for (auto& c : url)
+    if (c == '\\')
+      c = '/';
 
   // std::string url;
 
@@ -195,10 +197,10 @@ void SimpleApp::OnContextInitialized() {
     // Create the Window. It will show itself after creation.
     CefWindow::CreateTopLevelWindow(new SimpleWindowDelegate(browser_view));
   } else {
-    // Information used when creating the native window.     
-     CefWindowInfo window_info;
-     window_info.width = width_ ? width_ : WIDTH;
-     window_info.height = height_ ? height_ : HEIGHT;
+    // Information used when creating the native window.
+    CefWindowInfo window_info;
+    window_info.width = width_ ? (int)width_ : WIDTH;
+    window_info.height = height_ ? (int)height_ : HEIGHT;
 
 #if defined(OS_WIN)
     // On Windows we need to specify certain flags that will be passed to
